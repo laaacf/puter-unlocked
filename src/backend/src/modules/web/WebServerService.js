@@ -274,15 +274,27 @@ class WebServerService extends BaseService {
         // (if we are in development mode only)
         // Open AFTER all services are ready to avoid "server not found" error
         if ( config.env === 'dev' && !config.no_browser_launch ) {
-            try {
-                // Add a small delay to ensure server is fully ready
-                setTimeout(async () => {
+            setTimeout(async () => {
+                try {
                     const openModule = await import('open');
-                    openModule.default(url);
-                }, 1000);
-            } catch (e) {
-                console.log('Error opening browser', e);
-            }
+                    // Try to open in default browser
+                    await openModule.default(url, {
+                        // Specify app to try different browsers
+                        app: ['google chrome', 'firefox', 'edge'],
+                    });
+                } catch (e) {
+                    // If automatic opening fails (e.g., Safari restrictions),
+                    // display the URL prominently in terminal
+                    const realConsole = globalThis.original_console_object ?? console;
+                    realConsole.log(`\n${ '='.repeat(60)}`);
+                    realConsole.log('🌐  Puter is ready!');
+                    realConsole.log('📍  Open this URL in your browser:');
+                    realConsole.log('');
+                    realConsole.log(`   ${url}`);
+                    realConsole.log('');
+                    realConsole.log(`${'='.repeat(60) }\n`);
+                }
+            }, 1000);
         }
     }
 
