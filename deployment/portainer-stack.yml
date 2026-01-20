@@ -1,11 +1,14 @@
 ---
-# Puter Portainer Stack 配置
+# Puter Portainer Stack 配置（支持反向代理版本）
 # 直接复制粘贴到 Portainer 的 Stack 编辑器中
 version: "3.8"
 services:
   puter:
     container_name: puter
-    image: ghcr.io/heyputer/puter:latest
+    # 使用自定义构建，基于修改后的代码
+    build:
+      context: https://github.com/laaacf/puter_test.git#main
+      dockerfile: Dockerfile
     restart: unless-stopped
     ports:
       - '4100:4100'
