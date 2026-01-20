@@ -1,0 +1,28 @@
+---
+# Puter Portainer Stack 配置
+# 直接复制粘贴到 Portainer 的 Stack 编辑器中
+version: "3.8"
+services:
+  puter:
+    container_name: puter
+    image: ghcr.io/heyputer/puter:latest
+    restart: unless-stopped
+    ports:
+      - '4100:4100'
+    environment:
+      TZ: Asia/Shanghai
+      PUID: 1000
+      PGID: 1000
+    volumes:
+      # 修改下面的路径为你的实际路径
+      - /home/你的用户名/docker/puter/config:/etc/puter
+      - /home/你的用户名/docker/puter/data:/var/puter
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:4100/test || exit 1
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "com.docker.compose.project=puter"
+      - "description=Puter - 隐私优先的个人云系统（支持反向代理）"

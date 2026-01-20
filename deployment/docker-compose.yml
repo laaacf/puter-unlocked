@@ -1,0 +1,44 @@
+---
+version: "3.8"
+services:
+  puter:
+    container_name: puter
+    # 使用自定义构建，基于修改后的代码
+    build:
+      context: https://github.com/laaacf/puter_test.git#main
+      # 或者如果在本地构建，使用下面的配置：
+      # context: .
+      # dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - '4100:4100'
+    environment:
+      # 时区设置
+      TZ: Asia/Shanghai
+      # 如果外部有配置文件，可以取消注释下面的行
+      # CONFIG_PATH: /etc/puter
+      PUID: 1000
+      PGID: 1000
+    volumes:
+      # 配置文件目录
+      - ./config:/etc/puter
+      # 数据目录
+      - ./data:/var/puter
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:4100/test || exit 1
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    # 如果使用反向代理，可以添加网络配置
+    # networks:
+    #   - proxy_network
+    labels:
+      # 用于 Portainer 的标识
+      - "com.docker.compose.project=puter"
+      - "description=Puter - 隐私优先的个人云系统"
+
+# 如果使用反向代理（如 Nginx Proxy Manager），可以取消注释下面的网络配置
+# networks:
+#   proxy_network:
+#     external: true
