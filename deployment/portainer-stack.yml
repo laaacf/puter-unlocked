@@ -7,7 +7,7 @@ services:
     container_name: puter
     # 使用自定义构建，基于修改后的代码
     build:
-      context: https://github.com/laaacf/puter_test.git#main
+      context: https://github.com/laaacf/puter-unlocked.git#main
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:

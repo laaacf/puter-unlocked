@@ -5,7 +5,7 @@ services:
     container_name: puter
     # 使用自定义构建，基于修改后的代码
     build:
-      context: https://github.com/laaacf/puter_test.git#main
+      context: https://github.com/laaacf/puter-unlocked.git#main
       # 或者如果在本地构建，使用下面的配置：
       # context: .
       # dockerfile: Dockerfile

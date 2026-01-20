@@ -33,7 +33,7 @@ services:
 # 部署步骤：
 # 1. 在服务器上克隆仓库：
 #    cd ~/docker
-#    git clone https://github.com/laaacf/puter_test.git
+#    git clone https://github.com/laaacf/puter-unlocked.git
 #
 # 2. 修改上面的路径：
 #    context: /home/你的用户名/docker/puter_test
@@ -42,7 +42,7 @@ services:
 # 3. 创建目录和配置：
 #    mkdir -p ~/docker/puter/config
 #    mkdir -p ~/docker/puter/data
-#    wget https://raw.githubusercontent.com/laaacf/puter_test/main/deployment/config.json -O ~/docker/puter/config/config.json
+#    wget https://raw.githubusercontent.com/laaacf/puter-unlocked/main/deployment/config.json -O ~/docker/puter/config/config.json
 #    sudo chown -R 1000:1000 ~/docker/puter
 #
 # 4. 在 Portainer 中使用此 Stack 配置

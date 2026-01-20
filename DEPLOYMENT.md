@@ -17,7 +17,7 @@
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/laaacf/puter_test.git ~/docker/puter
+git clone https://github.com/laaacf/puter-unlocked.git ~/docker/puter
 cd ~/docker/puter
 
 # 2. 运行部署脚本
@@ -39,7 +39,7 @@ chmod +x deploy.sh
 ### 步骤 1：克隆仓库到服务器
 
 ```bash
-git clone https://github.com/laaacf/puter_test.git ~/docker/puter
+git clone https://github.com/laaacf/puter-unlocked.git ~/docker/puter
 cd ~/docker/puter
 
 # 创建目录和配置
@@ -296,7 +296,7 @@ services:
 ## 📚 相关链接
 
 - 原项目：https://github.com/HeyPuter/puter
-- 修改版本：https://github.com/laaacf/puter_test
+- 修改版本：https://github.com/laaacf/puter-unlocked
 - Portainer 文档：https://docs.portainer.io/
 
 ---

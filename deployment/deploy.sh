@@ -24,7 +24,7 @@ cd ~/docker/puter
 
 # 下载 docker-compose.yml
 if [ ! -f docker-compose.yml ]; then
-    wget -q https://raw.githubusercontent.com/laaacf/puter_test/main/deployment/docker-compose.yml -O docker-compose.yml
+    wget -q https://raw.githubusercontent.com/laaacf/puter-unlocked/main/deployment/docker-compose.yml -O docker-compose.yml
     echo "  ✓ docker-compose.yml 下载完成"
 else
     echo "  ⚠ docker-compose.yml 已存在，跳过下载"
@@ -32,7 +32,7 @@ fi
 
 # 下载 config.json
 if [ ! -f config/config.json ]; then
-    wget -q https://raw.githubusercontent.com/laaacf/puter_test/main/deployment/config.json -O config/config.json
+    wget -q https://raw.githubusercontent.com/laaacf/puter-unlocked/main/deployment/config.json -O config/config.json
     echo "  ✓ config.json 下载完成"
 else
     echo "  ⚠ config.json 已存在，跳过下载"

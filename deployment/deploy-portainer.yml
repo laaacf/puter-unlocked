@@ -42,7 +42,7 @@ services:
 # 如需完整功能（反向代理、灵活域名访问），请使用命令行部署：
 #
 # cd ~/docker/puter
-# wget https://raw.githubusercontent.com/laaacf/puter_test/main/deployment/docker-compose.yml
+# wget https://raw.githubusercontent.com/laaacf/puter-unlocked/main/deployment/docker-compose.yml
 # docker compose up -d
 #
 # ============================================================================

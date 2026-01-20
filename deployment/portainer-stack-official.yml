@@ -34,5 +34,5 @@ services:
 # 2. 如需反向代理支持，请使用命令行部署
 # 3. 命令行部署方式：
 #    cd ~/docker/puter
-#    wget https://raw.githubusercontent.com/laaacf/puter_test/main/deployment/docker-compose.yml
+#    wget https://raw.githubusercontent.com/laaacf/puter-unlocked/main/deployment/docker-compose.yml
 #    docker compose up -d

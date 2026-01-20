@@ -6,8 +6,8 @@
 
 ```bash
 # 1️⃣ 克隆仓库
-git clone https://github.com/laaacf/puter_test.git
-cd puter_test
+git clone https://github.com/laaacf/puter-unlocked.git
+cd puter-unlocked
 
 # 2️⃣ 运行部署脚本
 chmod +x deploy.sh
@@ -119,7 +119,7 @@ A: 可以，运行 `git pull` 更新代码，然后 `docker compose build` 重�
 ## 📞 需要帮助？
 
 - 📖 查看详细文档：[DEPLOYMENT.md](DEPLOYMENT.md)
-- 🐛 提交问题：[GitHub Issues](https://github.com/laaacf/puter_test/issues)
+- 🐛 提交问题：[GitHub Issues](https://github.com/laaacf/puter-unlocked/issues)
 - 📚 原项目文档：[HeyPuter/puter](https://github.com/HeyPuter/puter)
 
 ---

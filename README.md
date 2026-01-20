@@ -8,8 +8,8 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/laaacf/puter_test.git
-cd puter_test
+git clone https://github.com/laaacf/puter-unlocked.git
+cd puter-unlocked
 
 # 运行部署脚本
 chmod +x deploy.sh
@@ -120,7 +120,7 @@ docker compose down
 ## 📚 相关链接
 
 - 原项目：https://github.com/HeyPuter/puter
-- 修改版本：https://github.com/laaacf/puter_test
+- 修改版本：https://github.com/laaacf/puter-unlocked
 - 官方网站：https://puter.com
 
 ---
