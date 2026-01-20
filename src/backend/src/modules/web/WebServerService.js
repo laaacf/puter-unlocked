@@ -194,19 +194,10 @@ class WebServerService extends BaseService {
         ports_to_try = null; // GC
 
         const url = config.origin;
-
-        // Open the browser to the URL of Puter
-        // (if we are in development mode only)
-        if ( config.env === 'dev' && !config.no_browser_launch ) {
-            try {
-                const openModule = await import('open');
-                openModule.default(url);
-            } catch (e) {
-                console.log('Error opening browser', e);
-            }
-        }
-
         const link = `\x1B[34;1m${url}\x1B[0m`;
+
+        // Note: Browser will be opened after all services are ready
+        // to avoid opening before the server is fully initialized
         const lines = [
             `Puter is now live at: ${link}`,
         ];
@@ -278,6 +269,21 @@ class WebServerService extends BaseService {
 
         this.server_ = server;
         await this.services.emit('install.websockets');
+
+        // Open the browser to the URL of Puter
+        // (if we are in development mode only)
+        // Open AFTER all services are ready to avoid "server not found" error
+        if ( config.env === 'dev' && !config.no_browser_launch ) {
+            try {
+                // Add a small delay to ensure server is fully ready
+                setTimeout(async () => {
+                    const openModule = await import('open');
+                    openModule.default(url);
+                }, 1000);
+            } catch (e) {
+                console.log('Error opening browser', e);
+            }
+        }
     }
 
     /**
