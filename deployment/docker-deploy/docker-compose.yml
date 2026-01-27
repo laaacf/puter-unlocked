@@ -1,0 +1,32 @@
+version: "3.8"
+services:
+  puter:
+    container_name: puter
+    # 本地构建，使用修改后的代码
+    # 如果项目在 ~/docker/puter-unlocked，使用下面的配置
+    build:
+      context: /home/laaa/docker/puter-unlocked
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - '4100:4100'
+    environment:
+      # 时区设置
+      TZ: Asia/Shanghai
+      PUID: 1000
+      PGID: 1000
+    volumes:
+      # 配置文件目录
+      - ./config:/etc/puter
+      # 数据目录（数据库、文件缓存等）
+      - ./data:/var/puter
+      # 使用 npm start 的数据库，保持账户和数据一致
+      - /home/laaa/docker/puter-unlocked/volatile/runtime/puter-database.sqlite:/var/puter/puter-database.sqlite
+    labels:
+      - "com.docker.compose.project=puter"
+      - "description=Puter - 隐私优先的个人云系统"
+
+# 注意：
+# 1. 第一次启动会自动构建镜像，可能需要几分钟
+# 2. 数据会持久化在 ./data 目录
+# 3. 配置文件在 ./config 目录

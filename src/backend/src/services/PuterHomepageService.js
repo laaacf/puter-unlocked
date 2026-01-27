@@ -366,6 +366,11 @@ export class PuterHomepageService extends BaseService {
                 : ''
         }
 
+        ${use_bundled_gui
+                ? '<link rel="stylesheet" href="/dist/bundle.min.css">'
+                : ''
+        }
+
         <!-- Load the GUI script -->
         <script src="/dist/bundle.min.js"></script>
         <!-- Initialize GUI when document is loaded -->

@@ -74,7 +74,8 @@ window.gui = async (options) => {
     // note: the order of the bundles is important
     // note: Build script will prepend `window.gui_env="prod"` to the top of the file
     else if ( window.gui_env === 'prod' ) {
-        await window.loadScript('https://js.puter.com/v2/');
+        // 不加载外部SDK，使用已打包的 bundle.min.js（已在HTML中加载）
+        // await window.loadScript('https://js.puter.com/v2/');
         // Load the minified bundles
         await window.loadCSS('/dist/bundle.min.css');
     }
