@@ -56,6 +56,34 @@ const parseMetadata = (metadata) => {
 };
 
 // -----------------------------------------------------------------------//
+// Builtin apps
+// -----------------------------------------------------------------------//
+router.get('/builtin/:name', async function (req, res, next) {
+    const name = req.params.name;
+
+    // 安全检查：只允许已知的内置应用名称
+    const allowedApps = ['viewer', 'editor', 'pdf', 'player', 'draw', 'code'];
+
+    if ( ! allowedApps.includes(name) ) {
+        return res.status(404).send('Builtin app not found');
+    }
+
+    // 提供静态文件
+    const staticPath = _path.join(__dirname, '../../builtin', name, 'index.html');
+
+    console.log('[BUILTIN] Requested app:', name);
+    console.log('[BUILTIN] Resolved path:', staticPath);
+    console.log('[BUILTIN] __dirname:', __dirname);
+
+    res.sendFile(staticPath, (err) => {
+        if ( err ) {
+            console.error('[BUILTIN] Error sending file:', err);
+            res.status(404).send(`Builtin app not found: ${ err.message}`);
+        }
+    });
+});
+
+// -----------------------------------------------------------------------//
 // All other requests
 // -----------------------------------------------------------------------//
 router.all('*', async function (req, res, next) {

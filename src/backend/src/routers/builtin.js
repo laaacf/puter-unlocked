@@ -18,16 +18,14 @@
  */
 'use strict';
 
-const eggspress = require('../api/eggspress');
+const express = require('express');
+const router = express.Router();
 const path = require('path');
 
 // -----------------------------------------------------------------------//
-// GET /builtin/:name
+// GET /:name - Serve builtin app HTML
 // -----------------------------------------------------------------------//
-const router = eggspress(['/builtin/:name'], {
-    allowedMethods: ['GET'],
-    middleware: [],
-}, async (req, res) => {
+router.get('/:name', async (req, res) => {
     const name = req.params.name;
 
     // 安全检查：只允许已知的内置应用名称
@@ -38,10 +36,11 @@ const router = eggspress(['/builtin/:name'], {
     }
 
     // 提供静态文件
-    const staticPath = path.join(__dirname, '../../builtin', name, 'index.html');
+    const staticPath = path.join(__dirname, '../../../builtin', name, 'index.html');
 
     res.sendFile(staticPath, (err) => {
         if ( err ) {
+            console.error('[BUILTIN] Error sending file:', err);
             res.status(404).send('Builtin app not found');
         }
     });

@@ -41,6 +41,9 @@ class ServeGUIService extends BaseService {
         // is this a puter.site domain?
         require('../routers/hosting/puter-site')(app);
 
+        // Builtin apps route (must be before _default)
+        app.use('/builtin', require('../routers/builtin'));
+
         // Router for all other cases
         app.use(require('../routers/_default'));
 
