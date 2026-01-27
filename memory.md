@@ -1,5 +1,87 @@
 # Puter 项目记忆
 
+## 2026-01-27 - 前端构建缺失导致页面布局混乱
+
+### 背景
+将本地完全正常的项目代码复制到 Debian 服务器后，登录功能正常，但页面布局混乱、图标大小异常。前端 bundle.min.js 存在且能正常加载，但样式没有应用。
+
+### 问题根源
+1. **缺少前端构建产物**：`src/gui/dist/bundle.min.css` 文件不存在
+2. **构建产物未包含在代码中**：`src/gui/dist/` 目录下的文件是构建产物，不应该依赖版本控制中的旧文件
+3. **部署流程不完整**：从 git clone 或复制代码后，缺少前端构建步骤
+
+**具体表现：**
+- 登录功能正常 ✅
+- API 调用正常 ✅
+- 页面能显示，但布局混乱、图标大小异常 ❌
+- 浏览器控制台显示 404 错误：`/dist/bundle.min.css`
+
+### 解决方案
+**关键步骤：在服务器上构建前端**
+
+```bash
+cd ~/docker/puter-unlocked/src/gui
+node ./build.js
+```
+
+构建后生成：
+- `src/gui/dist/bundle.min.js` (2.5M)
+- `src/gui/dist/bundle.min.css` (143K)
+- `src/gui/dist/bundle.min.js.LICENSE.txt`
+
+### 完整的部署流程
+```bash
+# 1. 确保使用 Node.js v24
+export PATH="/usr/bin:$PATH"
+
+# 2. 安装依赖
+npm install
+
+# 3. 编译后端 TypeScript
+npm run build:ts
+
+# 4. 重新编译 better-sqlite3（如果换了 Node 版本）
+npm rebuild better-sqlite3
+
+# 5. **构建前端 GUI（关键步骤！）**
+cd src/gui
+node ./build.js
+cd ../..
+
+# 6. 配置
+cp volatile/config/config.json.example volatile/config/config.json
+# 编辑配置，添加必需设置
+
+# 7. 设置权限
+mkdir -p volatile/runtime
+chmod 777 volatile/runtime
+
+# 8. 启动服务
+nohup node ./tools/run-selfhosted.js > /tmp/puter.log 2>&1 &
+```
+
+### 关键经验
+1. **dist 目录是构建产物，必须重新构建**：不能依赖版本控制或本地复制的旧文件
+2. **部署到新环境必须完整构建**：包括后端 TypeScript 编译和前端 GUI 构建
+3. **Node.js 版本变更需要重新编译原生模块**：better-sqlite3 等原生 C++ 模块需要重新编译
+4. **配置文件很重要**：缺少 `experimental_no_subdomain` 等配置会导致 API 调用错误
+
+### Git 提交记录
+- `732b69c2` fix: 添加 window.api_origin 和 window.app_origin 全局变量以修复前端 API 调用问题
+- `5069918d` fix: 修复反向代理重定向循环问题
+- `6ae82d5d` docs: 记录反向代理重定向循环问题的修复过程
+
+### 技术细节
+- 前端构建工具：webpack 5.103.0
+- 构建时间：约 8-10 秒
+- 构建产物：
+  - bundle.min.js: 2.5MB（包含所有前端代码）
+  - bundle.min.css: 143KB（包含所有样式）
+- 本地开发环境使用 `window.gui_env="dev"`，不加载 CSS 文件
+- 生产环境需要完整的 bundle.min.css
+
+---
+
 ## 2026-01-26 - 反向代理重定向循环问题修复
 
 ### 背景
