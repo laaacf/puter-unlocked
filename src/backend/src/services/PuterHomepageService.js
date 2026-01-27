@@ -136,7 +136,8 @@ export class PuterHomepageService extends BaseService {
 
             app_origin: actual_origin,
             api_origin: api_base_url,
-            use_bundled_gui: config.use_bundled_gui,
+            // 默认使用打包的 GUI，适用于生产环境和 Docker 部署
+            use_bundled_gui: config.use_bundled_gui ?? true,
 
             manifest: this.manifest,
             gui_path: config.assets.gui,
