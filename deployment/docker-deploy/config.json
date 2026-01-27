@@ -1,0 +1,41 @@
+{
+    "config_name": "Puter Docker Deployment",
+    "env": "production",
+    "http_port": 4100,
+    "domain": "puter.localhost",
+    "protocol": "http",
+    "contact_email": "your-email@example.com",
+
+    "allow_all_host_values": true,
+    "allow_nipio_domains": true,
+    "disable_ip_validate_event": true,
+    "custom_domains_enabled": true,
+    "experimental_no_subdomain": true,
+
+    "nginx_mode": true,
+
+    "services": {
+        "database": {
+            "engine": "sqlite",
+            "path": "/var/puter/puter-database.sqlite"
+        },
+        "dynamo": {
+            "path": "/var/puter/puter-ddb"
+        },
+        "thumbnails": {
+            "engine": "purejs"
+        },
+        "file-cache": {
+            "disk_limit": 16384,
+            "disk_max_size": 16384,
+            "precache_size": 16384,
+            "path": "/var/puter/file-cache"
+        }
+    },
+
+    "cookie_name": "8fbcc83b-6a51-48f6-9a77-82145c76c651",
+    "jwt_secret": "5b35719d-f834-49ad-8532-985c787e02b1",
+    "url_signature_secret": "b30bb5cd-0474-403a-a5ae-18fb680969cf",
+    "private_uid_secret": "23e9077a30286dbaf2ae74f7dad656179080972eeafa2498",
+    "private_uid_namespace": "d30e3844-ebcf-4abc-8d67-d97db8ed5cc6"
+}
