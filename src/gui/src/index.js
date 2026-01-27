@@ -53,6 +53,8 @@ window.gui = async (options) => {
     window.app_domain = options.app_domain ?? new URL(window.gui_origin).hostname;
     window.hosting_domain = options.hosting_domain ?? 'puter.site';
     window.api_origin = options.api_origin ?? 'https://api.puter.com';
+    // 设置全局变量，确保 puter.js SDK 使用正确的 API origin
+    globalThis.PUTER_API_ORIGIN = window.api_origin;
     window.max_item_name_length = options.max_item_name_length ?? 500;
     window.require_email_verification_to_publish_website = options.require_email_verification_to_publish_website ?? true;
     window.disable_temp_users = options.disable_temp_users ?? false;

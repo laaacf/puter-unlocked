@@ -50,6 +50,9 @@ RUN npm cache clean --force && \
     done
 
 # Run the build command if necessary
+# 设置 API 环境变量，确保使用相对路径而不是硬编码的 api.puter.com
+ARG PUTER_API_ORIGIN=""
+ENV PUTER_API_ORIGIN=${PUTER_API_ORIGIN}
 RUN cd src/gui && npm run build && cd -
 
 # Production stage
