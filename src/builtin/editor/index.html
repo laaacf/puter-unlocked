@@ -220,25 +220,13 @@
             try {
                 let content;
 
-                // 使用 puter.js SDK 读取文件，避免 Mixed Content 问题
-                if (params.itemUid) {
-                    console.log('[Editor] Loading from puter.fs, uid:', params.itemUid);
-
-                    // 从父窗口获取 puter 对象
-                    const puter = window.parent.puter || window.top.puter;
-
-                    if (!puter) {
-                        throw new Error('Puter SDK not available');
-                    }
-
-                    // 直接传递 UID 字符串
-                    const fileData = await puter.fs.read(params.itemUid);
-
-                    // 将 ArrayBuffer 转换为字符串
-                    const decoder = new TextDecoder();
-                    content = decoder.decode(fileData);
+                // 直接使用 read_url（需要反向代理转发 /file 路径）
+                if (params.itemReadUrl) {
+                    console.log('[Editor] Loading from read_url:', params.itemReadUrl);
+                    const response = await fetch(params.itemReadUrl);
+                    content = await response.text();
                 } else {
-                    showError('No file UID provided');
+                    showError('No read URL provided');
                     return;
                 }
 

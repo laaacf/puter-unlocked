@@ -279,7 +279,7 @@
         async function loadPDF() {
             const params = getURLParams();
 
-            if (!params.itemUid) {
+            if (!params.itemReadUrl) {
                 showError('No PDF file specified');
                 return;
             }
@@ -287,23 +287,10 @@
             fileName = params.itemName;
 
             try {
-                console.log('[PDF] Loading from puter.fs, uid:', params.itemUid);
+                console.log('[PDF] Loading from:', params.itemReadUrl);
 
-                // 从父窗口获取 puter 对象
-                const puter = window.parent.puter || window.top.puter;
-
-                if (!puter) {
-                    throw new Error('Puter SDK not available');
-                }
-
-                // 使用 puter.js SDK 读取文件，避免 Mixed Content 问题
-                // 直接传递 UID 字符串
-                const fileData = await puter.fs.read(params.itemUid);
-
-                console.log('[PDF] File data received, size:', fileData.byteLength);
-
-                // 将 ArrayBuffer 传递给 PDF.js
-                const loadingTask = pdfjsLib.getDocument({ data: fileData });
+                // 直接使用 read_url（需要反向代理转发 /file 路径）
+                const loadingTask = pdfjsLib.getDocument(params.itemReadUrl);
                 pdfDoc = await loadingTask.promise;
 
                 console.log('[PDF] Loaded, pages:', pdfDoc.numPages);
