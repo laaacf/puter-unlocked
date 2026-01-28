@@ -26,6 +26,10 @@ config.__import_identity__ = require('uuid').v4();
 // Static defaults
 config.servers = [];
 
+// 使用实验性无子域名模式，API 和 GUI 使用同一个域名
+// 这对于 Docker 部署和本地开发很重要，避免 CORS 问题
+config.experimental_no_subdomain = true;
+
 config.disable_user_signup = false;
 config.default_user_group = '78b1b1dd-c959-44d2-b02c-8735671f9997';
 
