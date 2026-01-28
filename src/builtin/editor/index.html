@@ -220,13 +220,17 @@
             try {
                 let content;
 
-                // 优先使用 read_url
-                if (params.itemReadUrl) {
-                    console.log('[Editor] Loading from read_url:', params.itemReadUrl);
-                    const response = await fetch(params.itemReadUrl);
-                    content = await response.text();
+                // 使用 puter.js SDK 读取文件，避免 Mixed Content 问题
+                if (params.itemUid) {
+                    console.log('[Editor] Loading from puter.fs, uid:', params.itemUid);
+                    const fileData = await puter.fs.read({
+                        uid: params.itemUid,
+                    });
+                    // 将 ArrayBuffer 转换为字符串
+                    const decoder = new TextDecoder();
+                    content = decoder.decode(fileData);
                 } else {
-                    showError('No read URL provided');
+                    showError('No file UID provided');
                     return;
                 }
 
@@ -247,8 +251,8 @@
 
         // 保存文件
         async function saveFile() {
-            if (!writeURL) {
-                setStatus('No write URL', 'error');
+            if (!fileUID) {
+                setStatus('No file UID', 'error');
                 return;
             }
 
@@ -258,17 +262,12 @@
             try {
                 const content = editor.value;
 
-                const response = await fetch(writeURL, {
-                    method: 'POST',
-                    body: content,
-                    headers: {
-                        'Content-Type': 'text/plain'
-                    }
+                // 使用 puter.js SDK 保存文件，避免 Mixed Content 问题
+                await puter.fs.write({
+                    uid: fileUID,
+                    content: content,
+                    type: 'text'
                 });
-
-                if (!response.ok) {
-                    throw new Error('Save failed: ' + response.statusText);
-                }
 
                 isModified = false;
                 setStatus('Saved', 'saved');
