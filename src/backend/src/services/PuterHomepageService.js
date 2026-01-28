@@ -121,9 +121,25 @@ export class PuterHomepageService extends BaseService {
 
         // 使用请求的实际协议和主机名，支持反向代理
         // 检查 X-Forwarded-Proto 和 X-Forwarded-Host 头以识别反向代理的真实协议和主机
-        const actual_protocol = req.get('X-Forwarded-Proto') || req.protocol;
-        const actual_host = req.get('X-Forwarded-Host') || req.get('host');
+        const x_forwarded_proto = req.get('X-Forwarded-Proto');
+        const x_forwarded_host = req.get('X-Forwarded-Host');
+        const x_forwarded_for = req.get('X-Forwarded-For');
+
+        // 调试日志：打印所有相关的头信息
+        console.log('[PuterHomepage] Request headers debug:');
+        console.log('  - req.protocol:', req.protocol);
+        console.log('  - req.get(host):', req.get('host'));
+        console.log('  - X-Forwarded-Proto:', x_forwarded_proto);
+        console.log('  - X-Forwarded-Host:', x_forwarded_host);
+        console.log('  - X-Forwarded-For:', x_forwarded_for);
+        console.log('  - req.url:', req.url);
+
+        const actual_protocol = x_forwarded_proto || req.protocol;
+        const actual_host = x_forwarded_host || req.get('host');
         const actual_origin = `${actual_protocol}://${actual_host}`;
+
+        console.log('  - Final actual_origin:', actual_origin);
+        console.log('  - Final api_base_url will be:', config.experimental_no_subdomain ? actual_origin : `${actual_protocol}://api.${actual_host.split(':')[0]}`);
 
         // 构建 API base URL：如果配置了 experimental_no_subdomain，使用同一个域名
         // 否则使用 api.<host> 的子域名
