@@ -1,5 +1,317 @@
 # Puter 项目记忆
 
+## 2026-01-27 - Docker 部署完整修复（第6次尝试终于成功）
+
+### 背景
+部署 6 个 builtin apps 后，Docker 容器能正常启动，但访问页面时显示空白。用户报告"所有之前遇到过的问题又出现了"，说明没有吸取之前的经验教训。经过 6 次尝试，最终彻底解决了所有问题。
+
+### 问题排查过程
+
+**第 1 次尝试：CSS 文件返回 404**
+- 现象：`/dist/bundle.min.css` 返回 404 Not Found
+- 原因：静态文件服务配置错误，路径指向不存在的 `public` 目录
+- 修复：将路径从 `../../public` 改为 `../../dist`
+
+**第 2 次尝试：路径层级错误**
+- 现象：CSS 仍然返回 404
+- 原因：从 `src/backend/src/services/` 到 `app/dist` 需要 4 层 `../`，不是 3 层
+- 计算：
+  - `../../dist` → `src/backend/dist` ❌
+  - `../../../dist` → `src/dist` ❌
+  - `../../../../dist` → `app/dist` ✅
+- 修复：路径改为 `../../../../dist`
+
+**第 3 次尝试：路由顺序问题**
+- 现象：CSS 仍然返回 404
+- 原因：`_default` 路由的 `router.all('*')` 在静态文件服务之前拦截了所有请求
+- 修复：将 `app.use(express.static(...))` 移到 `_default` 路由之前
+
+**第 4 次尝试：静态文件挂载路径错误**
+- 现象：CSS 仍然返回 404
+- 原因：`app.use(express.static(path))` 挂载到根路径 `/`，导致：
+  - 请求 `/dist/bundle.min.css` → 查找 `path + /dist/bundle.min.css`
+  - 结果：`app/dist/dist/bundle.min.css` ❌
+- 修复：使用 `app.use('/dist', express.static(path))`，正确映射到 `app/dist/bundle.min.css`
+
+**第 5 次尝试：页面空白 - 缺少 puter.js SDK**
+- 现象：CSS 和 JS 都能正常加载（200 OK），但页面完全空白
+- 浏览器控制台错误：
+  ```
+  Uncaught (in promise) ReferenceError: puter is not defined
+      at window.initgui (bundle.min.js:2:2112310)
+      at window.gui (bundle.min.js:2:1767419)
+  ```
+- 原因：
+  1. 之前为了避免依赖外部资源，注释掉了外部 SDK 加载（`https://js.puter.com/v2/`）
+  2. 但没有提供本地替代方案
+  3. `bundle.min.js` 依赖 `puter` 对象，但该对象未定义
+  4. 导致 JavaScript 执行出错，页面无法渲染
+- 解决方案：在 prod 模式下加载本地 puter.js SDK
+
+**第 6 次尝试：SDK 构建和部署**
+- 问题1：`puter-js` 需要先构建才能生成 `dist/puter.js`
+- 问题2：webpack 输出文件名是 `puter.js`，不是 `puter.dev.js`
+- 修复：在 Dockerfile 中添加构建步骤，并复制正确的文件名
+
+---
+
+### 最终解决方案
+
+#### 修复1：ServeGUIService.js - 静态文件服务配置
+
+**文件：** `src/backend/src/services/ServeGUIService.js`
+
+**关键修改：**
+```javascript
+async ['__on_install.routes-gui'] () {
+    const { app } = this.services.get('web-server');
+
+    // is this a puter.site domain?
+    require('../routers/hosting/puter-site')(app);
+
+    // Static files - serve dist directory for bundle.min.js and bundle.min.css
+    // IMPORTANT: Must be before _default router, otherwise /dist/* will be caught by router.all('*')
+    // Mount to /dist path so /dist/bundle.min.css maps to app/dist/bundle.min.css
+    // Path: src/backend/src/services/ -> ../../../../dist -> app/dist
+    app.use('/dist', express.static(_path.join(__dirname, '../../../../dist')));
+
+    // Builtin apps route (must be before _default)
+    app.use('/builtin', require('../routers/builtin'));
+
+    // Router for all other cases
+    app.use(require('../routers/_default'));
+}
+```
+
+**关键点：**
+1. ✅ 使用 `/dist` 挂载路径（不是根路径）
+2. ✅ 使用 `../../../../dist`（4 层向上）
+3. ✅ 静态文件服务在 `_default` 路由之前
+
+#### 修复2：index.js - prod 模式加载本地 SDK
+
+**文件：** `src/gui/src/index.js`
+
+**关键修改：**
+```javascript
+// PROD: load the minified bundles if we are in production mode
+// note: the order of the bundles is important
+// note: Build script will prepend `window.gui_env="prod"` to the top of the file
+else if ( window.gui_env === 'prod' ) {
+    // 加载本地 puter.js SDK（不使用外部SDK）
+    await window.loadScript('/sdk/puter.dev.js');
+    // Load the minified bundles
+    await window.loadCSS('/dist/bundle.min.css');
+}
+```
+
+**关键点：**
+1. ✅ 加载本地 `/sdk/puter.dev.js`（不是外部 SDK）
+2. ✅ SDK 必须在 bundle.min.js 之前加载
+3. ✅ 保留了 CSS 加载（虽然 HTML 中已有 link 标签）
+
+#### 修复3：Dockerfile - 构建并复制 SDK
+
+**文件：** `Dockerfile`
+
+**关键修改：**
+```dockerfile
+# Run the build command if necessary
+# 设置 API 环境变量，确保使用相对路径而不是硬编码的 api.puter.com
+ARG PUTER_API_ORIGIN=""
+ENV PUTER_API_ORIGIN=${PUTER_API_ORIGIN}
+# Build puter.js SDK first
+RUN cd src/puter-js && npm run build && cd -
+# Then build GUI
+RUN cd src/gui && npm run build && cd -
+
+# ... (在 production stage)
+
+# Copy built artifacts and necessary files from the build stage
+COPY --from=build /app/src/gui/dist ./dist
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/src/builtin ./src/builtin
+# Copy puter.js SDK for prod mode
+RUN mkdir -p ./sdk
+COPY --from=build /app/src/puter-js/dist/puter.js ./sdk/puter.dev.js
+COPY . .
+```
+
+**关键点：**
+1. ✅ 先构建 `puter-js`，再构建 GUI
+2. ✅ 创建 `/sdk/` 目录
+3. ✅ 复制 `dist/puter.js`（不是 `puter.dev.js`）到 `/sdk/puter.dev.js`
+
+---
+
+### 问题根源总结
+
+| 问题 | 根本原因 | 解决方案 |
+|------|----------|----------|
+| CSS 返回 404 | 静态文件服务路径错误 | 使用正确的路径层级和挂载路径 |
+| CSS 返回 404 | 路由顺序错误 | 静态文件服务在 _default 之前 |
+| CSS 返回 404 | 挂载路径错误 | 使用 `/dist` 挂载路径 |
+| 页面空白 | 缺少 puter.js SDK | 加载本地 SDK 文件 |
+| SDK 构建失败 | 未构建 puter-js | 在 Dockerfile 中添加构建步骤 |
+| SDK 文件名错误 | webpack 输出 puter.js | 复制正确的文件名 |
+
+---
+
+### Git 提交记录
+
+1. **c768fd22** - fix: 修复静态文件服务路径，将 public 改为 dist 目录
+2. **735ecf13** - fix: 修正静态文件服务路径层级（从 ../../ 改为 ../../../）
+3. **1197d2d4** - fix: 调整路由顺序，将静态文件服务移到 _default 路由之前
+4. **e9398a75** - fix: 修正静态文件路径层级（从 ../../../ 改为 ../../../../）
+5. **77442cdf** - fix: 将静态文件服务挂载到 /dist 路径
+6. **d0e697f1** - fix: 在 prod 模式下加载本地 puter.js SDK
+7. **6b5d21c3** - fix: 添加 puter.js SDK 构建步骤，并复制正确的文件名
+
+---
+
+### 关键经验
+
+#### 1. Express 静态文件服务配置
+
+**错误做法：**
+```javascript
+// 挂载到根路径，但实际路径在 dist 子目录
+app.use(express.static('/app/dist'));
+// 结果：/dist/file.js → /app/dist/dist/file.js ❌
+```
+
+**正确做法：**
+```javascript
+// 挂载到 /dist 路径，指向 dist 目录
+app.use('/dist', express.static('/app/dist'));
+// 结果：/dist/file.js → /app/dist/file.js ✅
+```
+
+#### 2. 路由顺序至关重要
+
+```javascript
+// ✅ 正确顺序
+app.use('/dist', express.static(...));     // 先处理静态文件
+app.use('/builtin', require(...));        // 再处理 builtin
+app.use(require('../routers/_default'));  // 最后处理通配路由
+
+// ❌ 错误顺序
+app.use(require('../routers/_default'));  // router.all('*') 会拦截所有请求
+app.use('/dist', express.static(...));     // 永远不会执行
+```
+
+#### 3. 相对路径计算
+
+从 `src/backend/src/services/ServeGUIService.js` 到 `app/dist`：
+```javascript
+// 计算路径
+src/backend/src/services/ + ../ = src/backend/src/
++ ../../ = src/backend/
++ ../../../ = src/
++ ../../../../ = app/
++ ../../../../dist = app/dist ✅
+```
+
+#### 4. SDK 依赖关系
+
+**Puter 的 JavaScript 依赖链：**
+1. `puter.js` SDK → 定义全局 `puter` 对象
+2. `bundle.min.js` → 使用 `puter` 对象
+3. `initgui()` → 初始化 GUI
+
+**错误的顺序：**
+```html
+<script src="/dist/bundle.min.js"></script>  <!-- 需要 puter 对象 -->
+<script src="/sdk/puter.dev.js"></script>    <!-- 定义 puter 对象 -->
+```
+
+**正确的顺序：**
+```javascript
+// 在 prod 模式下，先加载 SDK
+await window.loadScript('/sdk/puter.dev.js');  // 先定义 puter 对象
+// bundle.min.js 已在 HTML 中加载
+await window.loadCSS('/dist/bundle.min.css');
+```
+
+#### 5. Docker 多阶段构建
+
+**构建顺序很重要：**
+```dockerfile
+# Stage 1: Build
+RUN cd src/puter-js && npm run build  # 先构建 SDK
+RUN cd src/gui && npm run build        # 再构建 GUI
+
+# Stage 2: Production
+COPY --from=build /app/src/gui/dist ./dist
+COPY --from=build /app/src/puter-js/dist/puter.js ./sdk/puter.dev.js
+```
+
+#### 6. 不要过早优化
+
+**之前的错误决策：**
+- "为了避免依赖外部资源，注释掉外部 SDK" → 但没有提供替代方案
+- 结果：页面完全空白
+
+**正确的做法：**
+- 先确保功能正常工作
+- 然后逐步优化（如使用本地替代外部资源）
+- 每一步都要验证
+
+---
+
+### 验证清单
+
+部署后必须验证的项目：
+
+- [ ] CSS 文件能访问：`curl -I http://localhost:4100/dist/bundle.min.css` 返回 200
+- [ ] JS 文件能访问：`curl -I http://localhost:4100/dist/bundle.min.js` 返回 200
+- [ ] SDK 文件能访问：`curl -I http://localhost:4100/sdk/puter.dev.js` 返回 200
+- [ ] 页面能正常显示（不是空白）
+- [ ] 浏览器控制台没有 `puter is not defined` 错误
+- [ ] 容器健康检查：`docker compose ps` 显示 `healthy`
+- [ ] 所有 6 个 builtin apps 能正常打开
+
+---
+
+### 部署步骤（完整版）
+
+```bash
+# 1. 拉取最新代码
+cd ~/docker && rm -rf puter-unlocked
+git clone https://github.com/laaacf/puter-unlocked.git
+
+# 2. 构建并启动容器
+cd ~/docker-puter
+docker compose down
+docker compose build
+docker compose up -d
+
+# 3. 验证
+docker compose ps  # 应该显示 healthy
+curl -I http://localhost:4100/dist/bundle.min.css  # 应该返回 200
+curl -I http://localhost:4100/sdk/puter.dev.js  # 应该返回 200
+
+# 4. 清除浏览器缓存后测试
+# Ctrl+Shift+R 或使用隐私模式
+```
+
+---
+
+### 备注
+
+**为什么需要 6 次尝试？**
+1. 没有查阅之前的修复记录
+2. 每次只修复一个问题，没有系统性思考
+3. 缺少完整的验证清单
+
+**如何避免类似问题？**
+1. ✅ 部署前查阅 memory.md 中的历史记录
+2. ✅ 系统性检查所有配置项（路径、路由、依赖）
+3. ✅ 使用验证清单确保所有功能正常
+4. ✅ 每次修复后记录到 memory.md
+
+---
+
 ## 2026-01-27 - Viewer 图片查看器实现成功
 
 ### 背景
