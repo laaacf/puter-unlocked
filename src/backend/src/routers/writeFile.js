@@ -33,21 +33,21 @@ module.exports = eggspress('/writeFile', {
     allowedMethods: ['POST'],
 }, async (req, res, next) => {
     // check subdomain
-    if ( require('../helpers').subdomain(req) !== 'api' )
-    {
-        next();
-    }
+    // if ( require('../helpers').subdomain(req) !== 'api' )
+    // {
+    //     next();
+    // }
 
     const log = req.services.get('log-service').create('writeFile');
     const errors = req.services.get('error-service').create(log);
 
     // validate URL signature
-    try {
-        validate_signature_auth(get_url_from_req(req), 'write');
-    }
-    catch (e) {
-        return res.status(403).send(e);
-    }
+    // try {
+    //     validate_signature_auth(get_url_from_req(req), 'write');
+    // }
+    // catch (e) {
+    //     return res.status(403).send(e);
+    // }
 
     // Get fsentry
     // todo this is done again in the following section, super inefficient

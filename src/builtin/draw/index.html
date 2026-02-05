@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Draw - Puter</title>
     <style>
         * {
@@ -261,21 +264,60 @@
             }
         }
 
+        let itemUid = null;
+
+        // 初始化
+        window.addEventListener('load', () => {
+            const params = getURLParams();
+            writeURL = params.itemWriteUrl;
+            itemName = params.itemName;
+            itemUid = params.itemUid;
+
+            initCanvas();
+            console.log('[Draw] Initialized');
+        });
+
         // 保存图片
         async function saveImage() {
             try {
                 const dataURL = canvas.toDataURL('image/png');
                 const blob = await (await fetch(dataURL)).blob();
 
-                if (writeURL) {
+                // 确定写入 URL，处理主机名不匹配问题
+                let targetWriteUrl = writeURL;
+                
+                if (!targetWriteUrl && itemUid) {
+                    targetWriteUrl = `/writeFile?uid=${itemUid}`;
+                }
+                
+                // 如果 writeURL 是完整 URL，转换为相对路径
+                if (targetWriteUrl) {
+                    try {
+                        const url = new URL(targetWriteUrl);
+                        targetWriteUrl = `${url.pathname}${url.search}`;
+                        console.log('[Draw] Using relative write URL:', targetWriteUrl);
+                    } catch (e) {
+                        // 已经是相对路径，直接使用
+                        console.log('[Draw] Write URL is already relative:', targetWriteUrl);
+                    }
+                }
+
+                if (targetWriteUrl) {
                     // 保存到 Puter
-                    const response = await fetch(writeURL, {
+                    // 使用 FormData 兼容 writeFile 接口
+                    const formData = new FormData();
+                    formData.append('file', blob, itemName || 'drawing.png');
+
+                    const response = await fetch(targetWriteUrl, {
                         method: 'POST',
-                        body: blob
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+                        },
+                        body: formData
                     });
 
                     if (!response.ok) {
-                        throw new Error('Save failed');
+                        throw new Error('Save failed: ' + response.statusText);
                     }
 
                     alert('Saved successfully!');

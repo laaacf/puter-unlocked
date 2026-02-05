@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Media Player - Puter</title>
     <style>
         * {
@@ -175,7 +178,20 @@
             const params = getURLParams();
             console.log('[Player] URL params:', params);
 
-            if (!params.itemReadUrl) {
+            // 处理 read_url，如果存在则转换为相对路径
+            if (params.itemReadUrl) {
+                try {
+                    const url = new URL(params.itemReadUrl);
+                    params.itemReadUrl = `${url.pathname}${url.search}`;
+                    console.log('[Player] Using relative read_url:', params.itemReadUrl);
+                } catch (e) {
+                    console.log('[Player] read_url is already relative or invalid:', params.itemReadUrl);
+                }
+            } else if (params.itemUid) {
+                // 如果没有 read_url，尝试使用 /file 接口构造
+                console.log('[Player] No read_url, constructing from uid:', params.itemUid);
+                params.itemReadUrl = `/file?uid=${params.itemUid}`;
+            } else {
                 showError('No media file specified');
                 return;
             }

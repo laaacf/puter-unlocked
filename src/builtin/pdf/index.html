@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>PDF Viewer - Puter</title>
     <!-- PDF.js library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -287,22 +290,35 @@
             fileName = params.itemName;
 
             try {
-                console.log('[PDF] Loading from API, uid:', params.itemUid);
+                let arrayBuffer;
 
-                // 使用相对路径调用后端 API，避免 Mixed Content 问题
-                // 浏览器会自动继承当前页面的协议（HTTPS）
-                const response = await fetch(`/api/read?uid=${encodeURIComponent(params.itemUid)}`, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+                // 优先使用 read_url
+                if (params.itemReadUrl) {
+                    console.log('[PDF] Loading from read_url:', params.itemReadUrl);
+                    try {
+                        const url = new URL(params.itemReadUrl);
+                        const relativeUrl = `${url.pathname}${url.search}`;
+                        console.log('[PDF] Using relative URL:', relativeUrl);
+                        const response = await fetch(relativeUrl);
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        arrayBuffer = await response.arrayBuffer();
+                    } catch (e) {
+                        console.warn('[PDF] Failed to load from read_url, falling back:', e);
                     }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
 
-                // 获取 PDF 数据作为 ArrayBuffer
-                const arrayBuffer = await response.arrayBuffer();
+                if (!arrayBuffer && params.itemUid) {
+                    console.log('[PDF] Loading from API, uid:', params.itemUid);
+                    // 移除 Authorization 头
+                    const response = await fetch(`/file?uid=${encodeURIComponent(params.itemUid)}`);
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    arrayBuffer = await response.arrayBuffer();
+                } else if (!arrayBuffer) {
+                    throw new Error('No valid source found');
+                }
 
                 // 使用 PDF.js 加载
                 const loadingTask = pdfjsLib.getDocument(arrayBuffer);

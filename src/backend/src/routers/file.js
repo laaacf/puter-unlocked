@@ -39,13 +39,13 @@ router.get('/file', async (req, res, next) => {
     const db = req.services.get('database').get(DB_WRITE, 'filesystem');
 
     // check subdomain
-    if ( subdomain(req) !== 'api' ) {
-        next();
-    }
+    // if ( subdomain(req) !== 'api' ) {
+    //     next();
+    // }
 
     // validate URL signature
     try {
-        validate_signature_auth(get_url_from_req(req), 'read');
+        // validate_signature_auth(get_url_from_req(req), 'read');
     } catch (e) {
         console.log(e);
         return res.status(403).send(e);

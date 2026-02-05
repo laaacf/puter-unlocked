@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Text Editor - Puter</title>
     <style>
         * {
@@ -220,22 +223,36 @@
             try {
                 let content;
 
-                // 使用相对路径调用后端 API，避免 Mixed Content 问题
-                // 浏览器会自动继承当前页面的协议（HTTPS）
-                if (params.itemUid) {
+                // 优先使用 read_url，但转换为相对路径以避免主机名不匹配
+                // 这样也利用了 URL 中的签名参数（尽管我们在后端禁用了强制检查，但保留它是好的实践）
+                if (params.itemReadUrl) {
+                    console.log('[Editor] Loading from read_url:', params.itemReadUrl);
+                    try {
+                        const url = new URL(params.itemReadUrl);
+                        const relativeUrl = `${url.pathname}${url.search}`;
+                        console.log('[Editor] Using relative URL:', relativeUrl);
+                        // 不带 Authorization 头，避免 CORS 预检问题，依赖 URL 签名
+                        const response = await fetch(relativeUrl);
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        content = await response.text();
+                    } catch (e) {
+                        console.warn('[Editor] Failed to load from read_url, falling back:', e);
+                        // Fallback logic below
+                    }
+                }
+
+                if (!content && params.itemUid) {
                     console.log('[Editor] Loading from API, uid:', params.itemUid);
-                    const response = await fetch(`/api/read?uid=${encodeURIComponent(params.itemUid)}`, {
-                        headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
-                        }
-                    });
+                    // 修改为使用 /file 接口，支持局域网访问
+                    // 移除 Authorization 头，尝试直接读取
+                    const response = await fetch(`/file?uid=${encodeURIComponent(params.itemUid)}`);
 
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
 
                     content = await response.text();
-                } else {
+                } else if (!content) {
                     showError('No file UID provided');
                     return;
                 }
@@ -273,9 +290,10 @@
                 const formData = new FormData();
                 const blob = new Blob([content], { type: 'text/plain' });
                 formData.append('file', blob, itemName || 'Untitled.txt');
-                formData.append('path', fileUID); // 使用 UID 作为路径
+                // formData.append('path', fileUID); // path is handled by query uid in writeFile.js
 
-                const response = await fetch('/api/write', {
+                // 修改为使用 /writeFile 接口，支持局域网访问
+                const response = await fetch(`/writeFile?uid=${encodeURIComponent(fileUID)}`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`

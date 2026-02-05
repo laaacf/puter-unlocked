@@ -186,7 +186,8 @@ module.exports = function eggspress (route, settings, handler) {
 
     const errorHandledHandler = async function (req, res, next) {
         if ( settings.subdomain ) {
-            if ( subdomain(req) !== settings.subdomain ) {
+            // 在无子域名模式下，跳过子域名检查
+            if ( !config.experimental_no_subdomain && subdomain(req) !== settings.subdomain ) {
                 return next();
             }
         }

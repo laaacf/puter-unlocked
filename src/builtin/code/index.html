@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Code Editor - Puter</title>
     <style>
         * {
@@ -281,12 +284,28 @@
             try {
                 let content;
 
-                // 优先使用 read_url
+                // 优先使用 read_url，但转换为相对路径以避免主机名不匹配
                 if (params.itemReadUrl) {
                     console.log('[Code] Loading from read_url:', params.itemReadUrl);
-                    const response = await fetch(params.itemReadUrl);
+                    try {
+                        const url = new URL(params.itemReadUrl);
+                        const relativeUrl = `${url.pathname}${url.search}`;
+                        console.log('[Code] Using relative URL:', relativeUrl);
+                        const response = await fetch(relativeUrl);
+                        content = await response.text();
+                    } catch (e) {
+                        console.warn('[Code] Failed to parse read_url, using as-is:', e);
+                        const response = await fetch(params.itemReadUrl);
+                        content = await response.text();
+                    }
+                } 
+                // 回退机制
+                else if (params.itemUid) {
+                    console.log('[Code] Using fallback /file endpoint');
+                    const response = await fetch(`/file?uid=${params.itemUid}`);
                     content = await response.text();
-                } else {
+                }
+                else {
                     showError('No read URL provided');
                     return;
                 }
@@ -309,7 +328,26 @@
 
         // 保存文件
         async function saveFile() {
-            if (!writeURL) {
+            // 确定写入 URL，处理主机名不匹配问题
+            let targetWriteUrl = writeURL;
+            
+            if (!targetWriteUrl && fileUID) {
+                targetWriteUrl = `/writeFile?uid=${fileUID}`;
+            }
+            
+            // 如果 writeURL 是完整 URL，转换为相对路径
+            if (targetWriteUrl) {
+                try {
+                    const url = new URL(targetWriteUrl);
+                    targetWriteUrl = `${url.pathname}${url.search}`;
+                    console.log('[Code] Using relative write URL:', targetWriteUrl);
+                } catch (e) {
+                    // 已经是相对路径，直接使用
+                    console.log('[Code] Write URL is already relative:', targetWriteUrl);
+                }
+            }
+
+            if (!targetWriteUrl) {
                 setStatus('No write URL', 'error');
                 return;
             }
@@ -320,11 +358,16 @@
             try {
                 const content = codeEditor.value;
 
-                const response = await fetch(writeURL, {
+                // 使用 FormData 兼容 writeFile 接口
+                const formData = new FormData();
+                const blob = new Blob([content], { type: 'text/plain' });
+                formData.append('file', blob, itemName || 'code.txt');
+
+                const response = await fetch(targetWriteUrl, {
                     method: 'POST',
-                    body: content,
+                    body: formData,
                     headers: {
-                        'Content-Type': 'text/plain'
+                        'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
                     }
                 });
 

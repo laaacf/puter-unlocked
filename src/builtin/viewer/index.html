@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Image Viewer - Puter</title>
     <style>
         * {
@@ -363,18 +366,29 @@
                     };
 
                     // 优先使用 read_url（最直接，不需要 SDK）
+                    // 但 read_url 可能包含错误的主机名（如 puter.localhost），需要转换为相对路径
                     if (params.itemReadUrl) {
                         console.log('[Viewer] Using read_url');
-                        displayImage(params.itemReadUrl, item);
-
-                        // 获取文件大小用于显示
                         try {
-                            const blob = await fetch(params.itemReadUrl).then(r => r.blob());
-                            showFileInfo(blob, item);
+                            const url = new URL(params.itemReadUrl);
+                            // 使用相对路径，避免主机名不匹配问题
+                            const relativeUrl = `${url.pathname}${url.search}`;
+                            console.log('[Viewer] Using relative URL:', relativeUrl);
+                            displayImage(relativeUrl, item);
+
+                            // 获取文件大小用于显示
+                            try {
+                                const blob = await fetch(relativeUrl).then(r => r.blob());
+                                showFileInfo(blob, item);
+                            } catch (e) {
+                                console.warn('[Viewer] Could not fetch file info:', e);
+                            }
+                            return;
                         } catch (e) {
-                            console.warn('[Viewer] Could not fetch file info:', e);
+                            console.warn('[Viewer] Failed to parse read_url, using as-is:', e);
+                            displayImage(params.itemReadUrl, item);
+                            return;
                         }
-                        return;
                     }
 
                     // 如果没有 read_url，尝试使用 SDK
@@ -389,8 +403,8 @@
 
                     // 既没有 read_url 也没有 SDK，尝试直接构造 URL
                     console.log('[Viewer] Trying direct URL construction');
-                    // 构造读取 URL: /item/{uid}
-                    const directUrl = `/item/${params.itemUid}`;
+                    // 构造读取 URL: /file?uid={uid}
+                    const directUrl = `/file?uid=${params.itemUid}`;
                     displayImage(directUrl, item);
                     return;
 
