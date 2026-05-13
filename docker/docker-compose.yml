@@ -1,0 +1,53 @@
+# Puter 一体化 Docker Compose 部署
+# 使用：cp .env.example .env; docker compose up -d
+#
+# 构建上下文指向上一级（项目根目录），复用已有的 Dockerfile
+
+services:
+  puter:
+    container_name: ${COMPOSE_PROJECT_NAME:-puter}
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: puter-local:latest
+    restart: unless-stopped
+
+    # 单端口映射：.env 里的 PUTER_HTTP_PORT 同时作为宿主和容器端口
+    ports:
+      - "${PUTER_HTTP_PORT:-4100}:${PUTER_HTTP_PORT:-4100}"
+
+    # 覆盖镜像里的 entrypoint，改用我们的脚本首次生成 config.json
+    entrypoint: ["/usr/local/bin/puter-entrypoint.sh"]
+    command: ["npm", "start"]
+
+    environment:
+      # 传给 entrypoint.sh 生成 config.json 用
+      PUTER_DOMAIN: ${PUTER_DOMAIN:-puter.localhost}
+      PUTER_PROTOCOL: ${PUTER_PROTOCOL:-http}
+      PUTER_HTTP_PORT: ${PUTER_HTTP_PORT:-4100}
+      PUTER_ENV: ${PUTER_ENV:-production}
+      PUTER_CONTACT_EMAIL: ${PUTER_CONTACT_EMAIL:-admin@example.com}
+
+      # 传给后端本身使用
+      TZ: ${TZ:-UTC}
+      NODE_ENV: production
+
+    volumes:
+      # 配置持久化：config.json 及任何 mod_packages
+      - ./data/config:/etc/puter
+      # 运行时数据：SQLite、dynalite、file-cache、日志、用户文件
+      - ./data/runtime:/var/puter
+      # entrypoint 以只读方式挂入容器，修改后 docker compose up 无需 rebuild
+      - ./entrypoint.sh:/usr/local/bin/puter-entrypoint.sh:ro
+
+    healthcheck:
+      # 用首页作为存活探针（镜像默认的 /test 会返回 400）
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:${PUTER_HTTP_PORT:-4100}/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+    labels:
+      - "com.docker.compose.project=puter"
+      - "description=Puter - 隐私优先的个人云系统"

@@ -1,5 +1,4 @@
 # /!\ NOTICE /!\
-
 # Many of the developers DO NOT USE the Dockerfile or image.
 # While we do test new changes to Docker configuration, it's
 # possible that future changes to the repo might break it.
@@ -7,94 +6,57 @@
 # to such changes as possible; developers shouldn't need to
 # worry about Docker unless the build/run process changes.
 
-# Build stage
+# ========== Build stage ==========
 FROM node:24-alpine AS build
 
-# Install build dependencies
 RUN apk add --no-cache git python3 make g++ \
     && ln -sf /usr/bin/python3 /usr/bin/python
 
-# Set up working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
-COPY package.json package-lock.json ./
-
-# Fail early if lockfile or manifest is missing
-RUN test -f package.json && test -f package-lock.json
-
-# Copy the source files
 COPY . .
 
-# Install mocha
-RUN npm i -g npm@latest
-RUN npm install -g mocha
+RUN test -f package.json && test -f package-lock.json
 
-# Install node modules
+# 带重试的 npm ci
 RUN npm cache clean --force && \
     for i in 1 2 3; do \
         npm ci && break || \
-        if [ $i -lt 3 ]; then \
-            sleep 15; \
-        else \
-            LOG_DIR="$(npm config get cache | tr -d '\"')/_logs"; \
-            echo "npm install failed; dumping logs from $LOG_DIR"; \
-            if [ -d "$LOG_DIR" ]; then \
-                ls -al "$LOG_DIR" || true; \
-                cat "$LOG_DIR"/* || true; \
-            else \
-                echo "Log directory not found (npm cache: $(npm config get cache))"; \
-            fi; \
-            exit 1; \
-        fi; \
+        if [ $i -lt 3 ]; then sleep 15; else exit 1; fi; \
     done
 
-# Run the build command if necessary
-# 设置 API 环境变量，确保使用相对路径而不是硬编码的 api.puter.com
 ARG PUTER_API_ORIGIN=""
 ENV PUTER_API_ORIGIN=${PUTER_API_ORIGIN}
-# Build puter.js SDK first
-RUN cd src/puter-js && npm run build && cd -
-# Then build GUI
-RUN cd src/gui && npm run build && cd -
 
-# Production stage
+RUN cd src/puter-js && npm run build
+RUN cd src/gui && npm run build
+
+# ========== Production stage ==========
 FROM node:24-alpine
 
-# Set labels
 LABEL repo="https://github.com/HeyPuter/puter"
 LABEL license="AGPL-3.0,https://github.com/HeyPuter/puter/blob/master/LICENSE.txt"
 LABEL version="1.2.46-beta-1"
 
-# Install git (required by Puter to check version)
+# Puter 运行时用 git 查版本
 RUN apk add --no-cache git
 
-# Set up working directory
-RUN mkdir -p /opt/puter/app
 WORKDIR /opt/puter/app
 
-# Copy built artifacts and necessary files from the build stage
-COPY --from=build /app/src/gui/dist ./dist
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/src/builtin ./src/builtin
-# Copy puter.js SDK for prod mode
-RUN mkdir -p ./sdk
-COPY --from=build /app/src/puter-js/dist/puter.js ./sdk/puter.dev.js
-COPY . .
+# 一次性把 build 阶段整个 /app 拷过来，node_modules（含 workspace 嵌套的子包）、
+# 构建产物、源码全部保留原样，避免生产阶段再跑一次冗余 npm install
+COPY --from=build /app ./
 
-# Set permissions
+# Puter 前端在 prod 模式下从 /opt/puter/app/sdk/puter.dev.js 加载 SDK
+RUN mkdir -p ./sdk && cp ./src/puter-js/dist/puter.js ./sdk/puter.dev.js
+
 RUN chown -R node:node /opt/puter/app
 USER node
 
 EXPOSE 4100
 
-HEALTHCHECK --interval=30s --timeout=3s \
-    CMD wget --no-verbose --tries=1 --spider http://puter.localhost:4100/test || exit 1
-
-ENV NO_VAR_RUNTUME=1
-
-# Attempt to fix `lru-cache@11.0.2` missing after build stage
-# by doing a redundant `npm install` at this stage
-RUN npm install
+# 用首页做探针（Puter 的 /test 返回 400，不能用作 healthcheck）
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD wget -q -O /dev/null http://127.0.0.1:4100/ || exit 1
 
 CMD ["npm", "start"]
